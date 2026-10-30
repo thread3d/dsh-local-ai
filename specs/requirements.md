@@ -201,3 +201,45 @@ The plugin MUST provide `/ollama` command:
 6. Build artifacts are self-contained
 7. No lockfile drift
 8. Multi-language README in sync
+
+## CodeWitness Verification Status (as of 2026-10-30)
+
+### Current Status: BLOCKED
+
+The CodeWitness verification run `CW-2026-10-30-F6AQ5` was BLOCKED due to a build failure in the sandbox environment.
+
+**Blocking Issue**: The CodeWitness TypeScript sandbox uses Node.js's experimental `stripTypeScriptTypes` feature which does not support TypeScript parameter properties. This causes all files with parameter properties (e.g., `src/adapter.ts`, `src/openai-adapter.ts`) to fail syntax checking.
+
+**Evidence**: 
+```
+SyntaxError: TypeScript parameter property is not supported in strip-only mode
+at src/adapter.ts:76
+at src/openai-adapter.ts:39
+```
+
+**Resolution Path**:
+1. The project's regular build and test pipeline works correctly with pnpm/vitest
+2. CodeWitness TypeScript support needs to either:
+   - Upgrade to full TypeScript compilation support, or
+   - Support parameter properties in the strip-only mode
+3. For now, verification relies on:
+   - The existing Vitest test suite (run with `pnpm test`)
+   - Manual inspection of source code
+   - Static analysis by CodeWitness (which runs successfully)
+
+### Requirements Verdict
+
+All 19 requirements are currently **BLOCKED** due to the build failure:
+- Functional Requirements (FR-1 through FR-6)
+- Non-Functional Requirements (NFR-1 through NFR-6)  
+- Architecture Constraints (AC-1 through AC-3)
+- Failure Modes (FM-1 through FM-4)
+
+### Counterexamples Generated
+
+CodeWitness generated 3 counterexamples that failed during test generation:
+- CE-001: FR-1 scenario failed (ollama_list)
+- CE-002: FR-3 scenario failed (route by keyword)
+- CE-003: FR-6 scenario failed (/ollama command)
+
+These failures are infrastructure-related (build cannot succeed), not code defects.
