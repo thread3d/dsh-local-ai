@@ -1,0 +1,92 @@
+# CodeWitness configuration for dsh-local-ai
+#
+# Independent verification for TypeScript/JavaScript plugin
+
+project:
+  name: dsh-local-ai
+
+language:
+  adapter: typescript
+
+verification:
+  timeout: 30m
+  max_duration: 60m
+  max_test_generation_iterations: 10
+  max_generated_tests: 200
+  max_mutation_time: 20m
+
+tests:
+  enabled: true
+  # The existing test suite uses vitest; CodeWitness will discover and run it
+  framework: vitest
+
+mutation:
+  enabled: false  # Disable for now; TypeScript mutation tools not well supported
+
+property_testing:
+  enabled: false  # Disable for now
+
+static_analysis:
+  enabled: true
+  analyzers: [tsc, heuristics]
+
+security:
+  enabled: true
+
+llm:
+  enabled: false
+  provider: none
+  max_calls: 0
+
+report:
+  html: true
+  json: true
+
+sandbox:
+  mode: local-process
+  allow_network: false
+
+# Build and test commands for TypeScript
+build:
+  command: node scripts/prepare.mjs
+  artifactPattern: "lib/**/*.js"
+
+test:
+  command: npm test
+  framework: vitest
+  coverageEnabled: false
+
+# Test scenarios for dsh-local-ai requirements
+# Note: Scenarios use native JavaScript syntax since Node.js exec is used
+scenarios:
+  # FR-1: Model Discovery and Management
+  - id: SC-FR1-1
+    requirement: FR-1
+    description: ollama_list tool lists installed models with disk usage
+    mode: sequence
+    setup: "const path = require('path'); process.chdir(path.join(__dirname, 'tests-CW'));"
+    steps:
+      - call: "runFixture('ollama_list', {})"
+    observation: "result"
+    invariant: "result && typeof result.output === 'string' && result.output.includes('local model')"
+
+  # NFR-3: Security - sanitization
+  - id: SC-NFR3-1
+    requirement: NFR-3
+    description: Sanitize sensitive data from URLs and paths
+    mode: sequence
+    setup: "const { sanitize } = require('../src/sanitize.js');"
+    steps:
+      - call: "sanitize('http://user:secret@example.com/path')"
+    observation: "result"
+    invariant: "result && result.indexOf('user') < 0 && result.indexOf('secret') < 0"
+
+  - id: SC-NFR3-2
+    requirement: NFR-3
+    description: Sanitize home directory paths from display
+    mode: sequence
+    setup: "const { sanitize } = require('../src/sanitize.js');"
+    steps:
+      - call: "sanitize('/home/user/.ollama/models/llama3.2')"
+    observation: "result"
+    invariant: "result && result.indexOf('/home/') < 0"
